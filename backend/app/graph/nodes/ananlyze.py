@@ -1,5 +1,3 @@
-# Test Script
-
 from app.graph.state import GraphState
 from app.schemas.analysis import DuckAnalysis
 from app.services.llm_helper import call_structured_llm

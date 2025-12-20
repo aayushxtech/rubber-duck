@@ -1,14 +1,21 @@
 from pydantic import BaseModel, ValidationError
-from typing import Type, TypeVar, List, Optional
+from typing import Type, List, Optional
 import os
-from app.services.model_registery import REASONING_MODEL
+from app.services.model_registery import REASONING_MODEL, LIGHT_WEIGHT_MODEL
 from app.services.parsed_response import ParsedResponse, T
 from app.schemas.request import DuckRequest
 from groq import Groq
 import json
+from dotenv import load_dotenv
 
+load_dotenv()
+
+api_key = os.getenv("GROQ_API_KEY")
+
+if not api_key:
+    raise RuntimeError("GROQ_API_KEY is not set")
 client = Groq(
-    api_key=os.environ.get("GROQ_API_KEY")
+    api_key=api_key
 )
 
 
@@ -103,8 +110,24 @@ def call_structured_llm(
     )
 
 
-def call_text_llm():
-    pass
+def call_text_llm(*, task_name: str, prompt: str, model: str = LIGHT_WEIGHT_MODEL, temperature: float = 0.7, max_tokens: int = 256) -> str:
+    completion = client.chat.completions.create(
+        model=model,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        temperature=temperature,
+        max_completion_tokens=max_tokens,
+        stream=False,
+    )
+
+    raw_text = completion.choices[0].message.content
+    if raw_text is None:
+        raise ValueError("LLM returned empty content")
+    return raw_text.strip()
 
 
 def _retry_and_repair():
