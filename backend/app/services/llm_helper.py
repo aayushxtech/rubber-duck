@@ -130,10 +130,6 @@ def call_text_llm(*, task_name: str, prompt: str, model: str = LIGHT_WEIGHT_MODE
     return raw_text.strip()
 
 
-def _retry_and_repair():
-    pass
-
-
 def _build_repair_prompt(
     *,
     base_prompt: str,

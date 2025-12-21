@@ -14,7 +14,7 @@ class GraphState(BaseModel):
     search: Optional[DuckSearch] = None
     evidence: Optional[DuckEvidence] = None
     socratic_question: Optional[str] = None
-    user_reply: Optional[str] = None
+    last_user_reply: Optional[str] = None
     turn_count: int = 0
     max_turns: int = 3
     final_answer: Optional[str] = None
