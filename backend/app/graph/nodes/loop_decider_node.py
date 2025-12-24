@@ -1,5 +1,6 @@
 from app.graph.state import GraphState
 
+
 def loop_decider_node(state: GraphState) -> GraphState:
     if state.analysis is None:
         raise ValueError("Analysis must exist before loop decision")
@@ -25,11 +26,5 @@ def loop_decider_node(state: GraphState) -> GraphState:
         return state
 
     state.should_loop = True
-    print(
-    "LOOP_DECIDER:",
-    "turn_count =", state.turn_count,
-    "max_turns =", state.max_turns,
-    "uncertainties =", state.analysis.uncertainties,
-)
 
     return state

@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
+from tkinter import NO
 import uuid
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from app.graph.graph import build_graph
 from app.graph.state import GraphState
 from app.schemas.request import DuckRequest
-from app.schemas.analysis import DuckAnalysis  # Ensure DuckAnalysis is imported
+from app.schemas.analysis import DuckAnalysis
+from app.schemas.evidence import DuckEvidence
 
 router = APIRouter()
 graph = build_graph()
@@ -24,6 +26,7 @@ class StartResponse(BaseModel):
     socratic_question: str
     analysis: DuckAnalysis
     turn_count: int
+    evidence: DuckEvidence | None = None
 
 
 class ReplyRequest(BaseModel):
@@ -32,6 +35,7 @@ class ReplyRequest(BaseModel):
     user_reply: str = Field(..., min_length=1)
     analysis: DuckAnalysis
     turn_count: int
+    evidence: DuckEvidence | None = None
 
 
 class ReplyResponse(BaseModel):
@@ -39,7 +43,7 @@ class ReplyResponse(BaseModel):
     final_answer: str | None = None
     analysis: DuckAnalysis
     turn_count: int
-
+    evidence: DuckEvidence | None = None
 # --- Endpoints ---
 
 
@@ -62,7 +66,8 @@ async def start_duck_reasoning(req: StartRequest):
     return StartResponse(
         socratic_question=result.get("socratic_question") or "",
         analysis=result.get("analysis", {}),
-        turn_count=result.get("turn_count", 0)
+        turn_count=result.get("turn_count", 0),
+        evidence=result.get("evidence")
     )
 
 
@@ -88,8 +93,8 @@ async def reply_duck_reasoning(req: ReplyRequest):
         analysis=req.analysis if isinstance(
             req.analysis, DuckAnalysis) else DuckAnalysis(**req.analysis.dict()),
         turn_count=req.turn_count,
-        # This is critical for the analyze node logic
-        socratic_question=previous_socratic_q
+        socratic_question=previous_socratic_q,
+        evidence=req.evidence
     )
     result = graph.invoke(state, config={"recursion_limit": RECURSION_LIMIT})
 
@@ -97,5 +102,6 @@ async def reply_duck_reasoning(req: ReplyRequest):
         socratic_question=result.get("socratic_question"),
         final_answer=result.get("final_answer"),
         analysis=result.get("analysis", {}),
-        turn_count=result.get("turn_count", req.turn_count)
+        turn_count=result.get("turn_count", req.turn_count),
+        evidence=result.get("evidence"),
     )
