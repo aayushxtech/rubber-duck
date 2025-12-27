@@ -5,26 +5,31 @@ def loop_decider_node(state: GraphState) -> GraphState:
     if state.analysis is None:
         raise ValueError("Analysis must exist before loop decision")
 
-    # Ensure turn_count and max_turns are initialized
-    if not hasattr(state, "turn_count") or state.turn_count is None:
-        state.turn_count = 0
-    if not hasattr(state, "max_turns") or state.max_turns is None:
-        state.max_turns = 25  # Default safety limit
+    # HARD GUARD: if a socratic question is pending, wait for user
+    if state.socratic_question is not None:
+        state.should_loop = True
+        return state
 
-    # Increment turn count
+    # Ensure counters exist
+    if state.turn_count is None:
+        state.turn_count = 0
+    if state.max_turns is None:
+        state.max_turns = 25
+
+    # Increment turn count ONLY when not waiting on user
     state.turn_count += 1
 
-    # Exit conditions
+    # Stop if max turns reached
     if state.turn_count >= state.max_turns:
         state.should_loop = False
         return state
 
-    # Ensure uncertainties is a list
+    # Stop if no uncertainties remain
     uncertainties = getattr(state.analysis, "uncertainties", None)
     if not uncertainties:
         state.should_loop = False
         return state
 
+    # Otherwise, continue looping
     state.should_loop = True
-
     return state

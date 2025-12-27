@@ -15,6 +15,11 @@ def route_node(state: GraphState) -> GraphState:
         state.route = "socratic"
         return state
 
-    # 3. Otherwise, converge
+    # 3. If socratic question exists, do not trigger final
+    if state.socratic_question:
+        state.route = "socratic"
+        return state
+
+    # 4. Otherwise, converge
     state.route = "final"
     return state
