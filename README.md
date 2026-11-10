@@ -15,7 +15,29 @@ RubberDuck is an interactive debugging and critical thinking assistant for softw
 
 ---
 
-## 2. Technology Stack
+## 2. Screenshots
+
+<p align="center">
+  <img src="screenshots/screenshot1.png" alt="Socratic Inquiry in Textual CLI" width="850" />
+  <br />
+  <em>Socratic Questioning & Interactive Clarification Turn</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/screenshot2.png" alt="Available CLI Commands and Help Menu" width="850" />
+  <br />
+  <em>Interactive CLI Commands & Navigation Guide (/help)</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/screenshot3.png" alt="Structured Problem Analysis" width="850" />
+  <br />
+  <em>Structured Analysis: Summary, Hidden Assumptions, and Uncertainties (/analysis)</em>
+</p>
+
+---
+
+## 3. Technology Stack
 
 - **Runtime**: Python 3.11+
 - **API Framework**: FastAPI, Uvicorn, Starlette
@@ -29,7 +51,7 @@ RubberDuck is an interactive debugging and critical thinking assistant for softw
 
 ---
 
-## 3. High-Level Architecture
+## 4. High-Level Architecture
 
 The system consists of a Textual CLI client, a FastAPI service layer, and a LangGraph state machine:
 
@@ -55,7 +77,7 @@ For complete details on execution lifecycles, node behaviors, and schema definit
 
 ---
 
-## 4. Installation and Setup
+## 5. Installation and Setup
 
 1. **Clone the repository**:
    ```bash
@@ -76,7 +98,7 @@ For complete details on execution lifecycles, node behaviors, and schema definit
 
 ---
 
-## 5. Environment Configuration
+## 6. Environment Configuration
 
 Create a `.env` file in the `backend/` directory:
 
@@ -93,7 +115,7 @@ RUBBERDUCK_BACKEND_URL=http://localhost:8000
 
 ---
 
-## 6. Starting the Backend
+## 7. Starting the Backend
 
 1. Export environment variables from `backend/.env`:
    ```bash
@@ -115,7 +137,7 @@ RUBBERDUCK_BACKEND_URL=http://localhost:8000
 
 ---
 
-## 7. Starting the CLI
+## 8. Starting the CLI
 
 Launch the interactive Textual terminal client:
 
@@ -144,7 +166,7 @@ When a Socratic question is waiting for a reply, you can type your answer direct
 
 ---
 
-## 8. Running Tests
+## 9. Running Tests
 
 ### Offline Test Suite
 Run the full functional and non-functional test suite without external API calls:
@@ -165,7 +187,7 @@ RUN_LIVE_TESTS=1 .venv/bin/pytest backend/tests/integration -v
 
 ---
 
-## 9. Documentation
+## 10. Documentation
 
 For an in-depth reference on internal state machines, error recovery, evidence deduplication, and API contracts, refer to:
 
