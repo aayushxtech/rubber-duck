@@ -1,12 +1,12 @@
-from pydantic import BaseModel
-from uuid import UUID
-from typing import Optional, Dict
 from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class DuckRequest(BaseModel):
     req_id: UUID
     req: str
-    meta: Optional[Dict] = {}
+    meta: dict | None = {}
     req_time: datetime
     status: str

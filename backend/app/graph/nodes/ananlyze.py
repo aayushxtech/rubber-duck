@@ -1,175 +1,245 @@
-from app.graph.state import GraphState
-from app.schemas.analysis import DuckAnalysis
+from datetime import UTC, datetime
+from uuid import uuid4
+
+from app.graph.state import DuckEvidence, GraphState
+from app.schemas.analysis import DuckAnalysis, DuckAnalysisContent
 from app.services.llm_helper import call_structured_llm
 
 
 def analyze_node(state: GraphState) -> GraphState:
-    if state.last_user_reply is None:
-        user_message = state.request.req
-        no_last_user_reply_result = call_structured_llm(
-            task_name="analyze",
-            prompt=f"""
+    """Perform analysis of the user's problem.
+
+    Three execution paths:
+    1️⃣ Initial turn – no evidence, no user reply yet.
+    2️⃣ Post‑search turn – evidence has been gathered but the user has not replied.
+    3️⃣ Clarification turn – the user replied to a Socratic question.
+    The appropriate prompt is built for each case and sent to the structured LLM.
+    """
+
+    # Safeguard: reject empty or whitespace-only user question
+    if state.request is None or not state.request.req or not state.request.req.strip():
+        raise ValueError("User question cannot be empty or whitespace-only")
+
+    # --------------------------------------------------------------------
+    # Helper to format evidence for inclusion in prompts
+    # --------------------------------------------------------------------
+    def _format_evidence(evidence: DuckEvidence | None) -> str:
+        if not evidence or not evidence.raw_results:
+            return "No external evidence collected."
+        lines = []
+        for idx, res in enumerate(evidence.raw_results, start=1):
+            title = url = snippet = None
+            if isinstance(res, dict):
+                if (
+                    "results" in res
+                    and isinstance(res["results"], list)
+                    and res["results"]
+                ):
+                    first = res["results"][0]
+                    title = first.get("title")
+                    url = first.get("url")
+                    snippet = first.get("content")
+                else:
+                    title = res.get("title")
+                    url = res.get("url")
+                    snippet = res.get("content")
+            # Fallback handling for error dicts
+            if not title:
+                title = res.get("query", "Unknown source")
+            if not url:
+                url = "N/A"
+            if not snippet:
+                snippet = "(no snippet available)"
+            lines.append(
+                f"[{idx}] Title: {title}\n    URL: {url}\n    Snippet: {snippet}"
+            )
+        return "\n".join(lines)
+
+    # --------------------------------------------------------------------
+    # 1️⃣ Initial turn – first analysis, no prior evidence, no user reply
+    # --------------------------------------------------------------------
+    if state.last_user_reply is None and (
+        state.evidence is None or not state.evidence.raw_results
+    ):
+        user_message = state.request.req.strip()
+        prompt = (
+            (
+                f"""
             TASK:
             You are a critical thinking assistant that analyzes a user’s message to surface hidden assumptions and identify meaningful uncertainties.
 
-            Your primary role is to help the user think more clearly by making implicit beliefs explicit and by identifying what must be clarified before a high-quality answer can be given.
-
-            You should prefer asking a single, focused Socratic question whenever clarification would materially improve the answer.
-
-            You are NOT trying to maximize rigor or completeness.
-            You are NOT trying to answer immediately if clarification is needed.
-            You ARE trying to decide whether the next step should be:
-            - asking the user a clarifying question
-            - performing external research
-            - or converging to a final answer
-
-            OUTPUT RULES (MANDATORY):
-            - Return ONLY a valid JSON object
-            - Use double quotes for all keys and string values
-            - Do NOT include markdown, comments, or explanatory text
-            - All required fields (analysis, assumptions, uncertainties, needs_search) MUST be present
-            - Do NOT add fields beyond the specified schema
-
-            CRITICAL INVARIANTS (MUST FOLLOW):
-            - If "uncertainties" is an empty list, then "needs_search" MUST be false
-            - External search is permitted ONLY to resolve listed uncertainties
-            - Missing user intent or context must NEVER trigger external search
-            - If clarification from the user would improve the answer, prefer listing uncertainties over converging
-
-            UNCERTAINTY RULES (IMPORTANT):
-            - Uncertainties represent information that must be clarified before giving the best answer
-            - Uncertainties may include:
-            - missing factual information
-            - missing user goals, constraints, time horizon, or context
-            - Clarification uncertainties must NOT trigger search
-            - Do NOT include:
-            - minor preferences that do not affect the substance of the answer
-            - stylistic or presentation-related clarifications
-            - uncertainties whose resolution would not change the advice
-
-            SOCRATIC PRIORITY RULE (KEY):
-            - If the question is abstract, strategic, value-based, or involves trade-offs:
-            - assume clarification is needed by default
-            - list at least one clarification uncertainty unless the question is already fully specified
-            - Do NOT treat the ability to answer under assumptions as sufficient reason to skip clarification
-
-            CONVERGENCE RULE:
-            - Converge (return an empty uncertainties list) ONLY if:
-            - the question is concrete and well-specified
-            - OR clarification would not materially change the answer
-            - Do NOT converge merely because an answer is possible under assumptions
-
-            SEARCH GUIDANCE:
-            - Set needs_search to true ONLY if:
-            - resolving a listed uncertainty requires real-world facts, empirical data, or external verification
-            - If uncertainties are empty, needs_search MUST be false
-
-            SCHEMA:
-            {{
-                "analysis_id": "string",
-            "analysis_time": "ISO8601 datetime string",
-            "analysis": "string",
-            "assumptions": ["string"],
-            "uncertainties": ["string"],
-            "needs_search": boolean
-            }}
-
-            FIELD GUIDANCE:
-            - analysis_id: Unique identifier for this analysis
-            - analysis_time: Current UTC time in ISO8601 format
-            - analysis: 1–2 sentence summary of the user’s core question
-            - assumptions: Implicit beliefs or premises (empty array if none)
-            - uncertainties: Information that must be clarified before giving the best answer (empty array only when truly unnecessary)
-            - needs_search: True only if resolving listed uncertainties requires external research
+            YOUR PRIMARY ROLE:
+            - Produce a JSON object with fields: analysis, assumptions, uncertainties, needs_search.
+            - Do NOT perform external search at this stage.
 
             USER MESSAGE:
             {user_message}
+            """
+            )
 
-            """.strip(),
-            schema=DuckAnalysis,
+            .strip()
         )
-        result = no_last_user_reply_result
 
+        # Safeguards before calling LLM
+        if user_message not in prompt:
+            raise ValueError("Constructed analysis prompt missing actual user question")
+        if "{user_message}" in prompt:
+            raise ValueError(
+                "Unresolved {user_message} placeholder detected in analysis prompt"
+            )
+
+        result = call_structured_llm(
+            task_name="analyze_initial", prompt=prompt, schema=DuckAnalysisContent
+        )
+
+    # --------------------------------------------------------------------
+    # 2️⃣ Post‑search turn – evidence exists, user has not replied yet
+    # --------------------------------------------------------------------
+    elif (
+        state.last_user_reply is None
+        and state.evidence is not None
+        and state.analysis is not None
+    ):
+        evidence_str = _format_evidence(state.evidence)
+        original_question = state.request.req.strip()
+        prompt = (
+            (
+                """
+            TASK:
+            You are revisiting the original question after external research.
+
+            CONTEXT:
+            ORIGINAL QUESTION: {original_question}
+            PREVIOUS ANALYSIS: {previous_analysis}
+            PREVIOUS ASSUMPTIONS: {previous_assumptions}
+            PREVIOUS UNCERTAINTIES: {previous_uncertainties}
+
+            EVIDENCE (may contain multiple sources):
+            {evidence_str}
+
+            INSTRUCTIONS:
+            - For each uncertainty, decide whether the evidence directly resolves it, partially resolves it, or does not resolve it.
+            - Remove uncertainties that are directly resolved.
+            - Keep uncertainties that are only partially addressed or still ambiguous.
+            - If contradictory evidence is present, retain the uncertainty and note the conflict.
+            - Do NOT assume an uncertainty is resolved merely because evidence exists.
+            - Set `needs_search` to true only if a factual gap remains that the current evidence does not adequately cover.
+
+            Respond with a valid JSON object with fields: analysis, assumptions, uncertainties, needs_search.
+            """
+            )
+            .format(
+                original_question=original_question,
+                previous_analysis=state.analysis.analysis or "",
+                previous_assumptions=state.analysis.assumptions or [],
+                previous_uncertainties=state.analysis.uncertainties or [],
+                evidence_str=evidence_str,
+            )
+            .strip()
+        )
+
+        # Safeguards before calling LLM
+        if original_question not in prompt:
+            raise ValueError("Constructed analysis prompt missing actual user question")
+        if "{user_message}" in prompt:
+            raise ValueError(
+                "Unresolved {user_message} placeholder detected in analysis prompt"
+            )
+
+        result = call_structured_llm(
+            task_name="analyze_post_search", prompt=prompt, schema=DuckAnalysisContent
+        )
+
+    # --------------------------------------------------------------------
+    # 3️⃣ Clarification turn – user replied to a Socratic question
+    # --------------------------------------------------------------------
     else:
         user_message = state.last_user_reply
-        initial_question = state.request.req
+        initial_question = state.request.req.strip()
         previous_socratic_q = state.socratic_question
-        search_results = state.evidence
-        last_user_reply_result = call_structured_llm(
-            task_name="analyze",
-            prompt=f"""
-        TASK:
-        You are a critical thinking assistant engaged in an ONGOING reasoning process with a user.
+        evidence_str = _format_evidence(state.evidence)
+        prompt = (
+            (
+                """
+            TASK:
+            You are a critical thinking assistant engaged in an ongoing reasoning process with a user.
 
-        Your goal is NOT to restart the analysis from scratch.
-        Your goal is to REFINE and UPDATE the understanding of the user's original question
-        based on new information provided by the user.
+            ORIGINAL USER QUESTION:
+            {initial_question}
 
-        Think of this as progressive clarification, not a fresh problem.
-        
-        ORIGINAL USER QUESTION:
-        {initial_question}
-        
-        Previous Socratic question:
-        {previous_socratic_q}
-        
-        SSEARCH RESULTS regarding last socratic question:
-        {search_results}
+            PREVIOUS SOCRATIC QUESTION:
+            {previous_socratic_q}
 
-        USER'S LATEST REPLY (in response to your previous Socratic question):
-        {user_message}
+            USER'S LATEST REPLY:
+            {user_message}
 
-        ANALYSIS INSTRUCTIONS:
+            EVIDENCE (if any):
+            {evidence_str}
 
-        - Treat the original user question as the core problem that remains constant.
-        - Use the user's latest reply to:
-        - Clarify intent
-        - Validate or invalidate earlier assumptions
-        - Resolve uncertainties where possible
-        - REMOVE uncertainties that are clearly answered by the user's reply.
-        - ADD new uncertainties ONLY if the reply introduces genuinely new ambiguity.
-        - Do NOT rephrase the problem unless the user's reply meaningfully reframes it.
-        - Do NOT invent complexity for its own sake.
-        - Only include uncertainties that PREVENT a reasonable, high-quality answer. If the remaining uncertainty would not change the conclusion materially,do NOT include it.
-        - Use the SEARCH RESULTS only to reduce the uncer
+            ANALYSIS INSTRUCTIONS:
+            - Update the analysis based on the user's reply.
+            - REMOVE uncertainties that the reply clearly resolves.
+            - ADD new uncertainties only if the reply creates new ambiguity.
+            - Use the evidence to answer factual parts where possible, but do NOT fabricate.
+            - Set `needs_search` to true ONLY if a factual gap remains that the evidence does not cover.
 
-        Your analysis should show progress toward clarity.
-
-        OUTPUT RULES (MANDATORY):
-        - Return ONLY a valid JSON object
-        - Do NOT include explanations, markdown, or extra text
-        - Use double quotes for all keys and string values
-        - Do NOT add fields beyond the schema
-        - All fields must be present even if empty
-
-        SCHEMA:
-        {{
-            "analysis_id": "string",
-            "analysis_time": "ISO8601 datetime string",
-            "analysis": "string",
-            "assumptions": ["string"],
-            "uncertainties": ["string"],
-            "needs_search": boolean
-        }}
-
-        FIELD GUIDANCE:
-        - analysis: 1–2 sentences summarizing the CURRENT refined understanding
-        - assumptions: implicit beliefs still being made (empty array if none)
-        - uncertainties: unresolved gaps AFTER considering the user's reply
-        - needs_search: true only if external facts or data are required to proceed
-
-        IMPORTANT:
-        This is an iterative reasoning process.
-        Your output should move closer to clarity than the previous turn.
-        """.strip(),
-            schema=DuckAnalysis,
+            Return a JSON object with fields: analysis, assumptions, uncertainties, needs_search.
+            """
+            )
+            .format(
+                initial_question=initial_question,
+                previous_socratic_q=previous_socratic_q or "(none)",
+                user_message=user_message,
+                evidence_str=evidence_str,
+            )
+            .strip()
         )
-        result = last_user_reply_result
 
-    if not result.success:
+        # Safeguards before calling LLM
+        if initial_question not in prompt:
+            raise ValueError("Constructed analysis prompt missing actual user question")
+        if "{user_message}" in prompt:
+            raise ValueError(
+                "Unresolved {user_message} placeholder detected in analysis prompt"
+            )
+
+        result = call_structured_llm(
+            task_name="analyze_clarification", prompt=prompt, schema=DuckAnalysisContent
+        )
+
+    # --------------------------------------------------------------------
+    # Common post‑processing – handle LLM failures & assign Python metadata
+    # --------------------------------------------------------------------
+    if not result.success or result.value is None:
         raise RuntimeError(
             f"Analyze node failed after {result.attempts} attempts: {result.errors}"
         )
 
-    state.analysis = result.value
+    # Generate metadata in Python (NOT the LLM)
+    analysis_id = uuid4()
+    analysis_time = datetime.now(UTC)
+
+    raw_val = result.value
+    # Validate and construct final DuckAnalysis with Python metadata
+    if isinstance(raw_val, (DuckAnalysisContent, DuckAnalysis)):
+        state.analysis = DuckAnalysis(
+            analysis_id=analysis_id,
+            analysis_time=analysis_time,
+            analysis=raw_val.analysis,
+            assumptions=raw_val.assumptions,
+            uncertainties=raw_val.uncertainties,
+            needs_search=raw_val.needs_search,
+        )
+    elif isinstance(raw_val, dict):
+        state.analysis = DuckAnalysis(
+            analysis_id=analysis_id,
+            analysis_time=analysis_time,
+            analysis=raw_val.get("analysis", ""),
+            assumptions=raw_val.get("assumptions"),
+            uncertainties=raw_val.get("uncertainties"),
+            needs_search=bool(raw_val.get("needs_search", False)),
+        )
+    else:
+        raise ValueError(f"Unexpected analysis response type: {type(raw_val)}")
+
     return state

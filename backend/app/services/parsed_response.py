@@ -1,14 +1,14 @@
-from pydantic import BaseModel
-from typing import Optional, List, TypeVar, Generic
+from typing import Generic, TypeVar
 
+from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
 
 
 class ParsedResponse(BaseModel, Generic[T]):
-    value: Optional[T]
-    raw_text: Optional[str]
+    value: T | None
+    raw_text: str | None
     model: str
     attempts: int
     success: bool
-    errors: Optional[List[str]] = None
+    errors: list[str] | None = None

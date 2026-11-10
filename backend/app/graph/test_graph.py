@@ -1,8 +1,9 @@
-from uuid import uuid4
 from datetime import datetime
+from uuid import uuid4
+
+from app.graph.graph import build_graph
 from app.graph.state import GraphState
 from app.schemas.request import DuckRequest
-from app.graph.graph import build_graph
 
 
 def test_langraph():

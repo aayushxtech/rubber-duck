@@ -1,0 +1,138 @@
+.
+├── ARCHITECTURE_ANALYSIS.md
+├── backend
+│   ├── app
+│   │   ├── graph
+│   │   │   ├── graph.py
+│   │   │   ├── __init__.py
+│   │   │   ├── nodes
+│   │   │   │   ├── ananlyze.py
+│   │   │   │   ├── final_respond_node.py
+│   │   │   │   ├── __pycache__
+│   │   │   │   │   ├── ananlyze.cpython-311.pyc
+│   │   │   │   │   ├── ananlyze.cpython-314.pyc
+│   │   │   │   │   ├── final_respond_node.cpython-311.pyc
+│   │   │   │   │   ├── final_respond_node.cpython-314.pyc
+│   │   │   │   │   ├── loop_decider_node.cpython-314.pyc
+│   │   │   │   │   ├── route.cpython-311.pyc
+│   │   │   │   │   ├── route.cpython-314.pyc
+│   │   │   │   │   ├── search_node.cpython-311.pyc
+│   │   │   │   │   ├── search_node.cpython-314.pyc
+│   │   │   │   │   ├── socratic.cpython-311.pyc
+│   │   │   │   │   └── socratic.cpython-314.pyc
+│   │   │   │   ├── route.py
+│   │   │   │   ├── search_node.py
+│   │   │   │   └── socratic.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── graph.cpython-311.pyc
+│   │   │   │   ├── graph.cpython-314.pyc
+│   │   │   │   ├── __init__.cpython-311.pyc
+│   │   │   │   ├── __init__.cpython-314.pyc
+│   │   │   │   ├── state.cpython-311.pyc
+│   │   │   │   ├── state.cpython-314.pyc
+│   │   │   │   └── test_graph.cpython-314.pyc
+│   │   │   ├── state.py
+│   │   │   ├── test_graph.py
+│   │   │   └── tests
+│   │   │       ├── __pycache__
+│   │   │       │   ├── test_evidence_pipeline.cpython-311-pytest-9.2.0.pyc
+│   │   │       │   ├── test_scenarios.cpython-311-pytest-9.2.0.pyc
+│   │   │       │   └── test_scenarios.cpython-314.pyc
+│   │   │       ├── test_evidence_pipeline.py
+│   │   │       └── test_scenarios.py
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-311.pyc
+│   │   │   ├── __init__.cpython-314.pyc
+│   │   │   └── main.cpython-311.pyc
+│   │   ├── routes
+│   │   │   ├── duck.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── duck.cpython-311.pyc
+│   │   │       ├── duck.cpython-314.pyc
+│   │   │       └── __init__.cpython-311.pyc
+│   │   ├── schemas
+│   │   │   ├── analysis.py
+│   │   │   ├── evidence.py
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── analysis.cpython-311.pyc
+│   │   │   │   ├── evidence.cpython-311.pyc
+│   │   │   │   ├── __init__.cpython-311.pyc
+│   │   │   │   ├── request.cpython-311.pyc
+│   │   │   │   └── search.cpython-311.pyc
+│   │   │   ├── request.py
+│   │   │   ├── response.py
+│   │   │   └── search.py
+│   │   └── services
+│   │       ├── llm_helper.py
+│   │       ├── model_registery.py
+│   │       ├── parsed_response.py
+│   │       └── __pycache__
+│   │           ├── llm_helper.cpython-311.pyc
+│   │           ├── model_registery.cpython-311.pyc
+│   │           └── parsed_response.cpython-311.pyc
+│   ├── README.md
+│   ├── requirements.txt
+│   └── tests
+│       ├── conftest.py
+│       ├── functional
+│       │   ├── __init__.py
+│       │   ├── __pycache__
+│       │   │   ├── __init__.cpython-311.pyc
+│       │   │   ├── test_api_contracts.cpython-311-pytest-9.2.0.pyc
+│       │   │   ├── test_evidence_pipeline.cpython-311-pytest-9.2.0.pyc
+│       │   │   ├── test_input_propagation.cpython-311-pytest-9.2.0.pyc
+│       │   │   ├── test_llm_service.cpython-311-pytest-9.2.0.pyc
+│       │   │   ├── test_reasoning_lifecycle.cpython-311-pytest-9.2.0.pyc
+│       │   │   └── test_state_isolation.cpython-311-pytest-9.2.0.pyc
+│       │   ├── test_api_contracts.py
+│       │   ├── test_evidence_pipeline.py
+│       │   ├── test_input_propagation.py
+│       │   ├── test_llm_service.py
+│       │   ├── test_reasoning_lifecycle.py
+│       │   └── test_state_isolation.py
+│       ├── __init__.py
+│       ├── integration
+│       │   ├── __init__.py
+│       │   ├── __pycache__
+│       │   │   ├── __init__.cpython-311.pyc
+│       │   │   ├── test_application_live.cpython-311-pytest-9.2.0.pyc
+│       │   │   ├── test_groq_live.cpython-311-pytest-9.2.0.pyc
+│       │   │   └── test_tavily_live.cpython-311-pytest-9.2.0.pyc
+│       │   ├── test_application_live.py
+│       │   ├── test_groq_live.py
+│       │   └── test_tavily_live.py
+│       ├── non_functional
+│       │   ├── __init__.py
+│       │   ├── __pycache__
+│       │   │   ├── __init__.cpython-311.pyc
+│       │   │   ├── test_basic_performance.cpython-311-pytest-9.2.0.pyc
+│       │   │   ├── test_input_robustness.cpython-311-pytest-9.2.0.pyc
+│       │   │   ├── test_reliability.cpython-311-pytest-9.2.0.pyc
+│       │   │   └── test_security.cpython-311-pytest-9.2.0.pyc
+│       │   ├── test_basic_performance.py
+│       │   ├── test_input_robustness.py
+│       │   ├── test_reliability.py
+│       │   └── test_security.py
+│       └── __pycache__
+│           ├── conftest.cpython-311-pytest-9.2.0.pyc
+│           └── __init__.cpython-311.pyc
+├── docs
+│   └── reports
+│       ├── INPUT_PROPAGATION_DIAGNOSTIC_REPORT.md
+│       ├── METADATA_AND_VALIDATION_FIX.md
+│       └── STAGE_B_GPT_OSS_INTEGRATION_REPORT.md
+├── EVIDENCE_ANALYSIS.md
+├── EVIDENCE_FIX_IMPLEMENTATION.md
+├── FINAL_IMPLEMENTATION_GUIDE.md
+├── FIX_PLAN.md
+├── -gitignore
+├── IMPLEMENTATION_COMPLETE.md
+├── IMPLEMENTATION_SUMMARY.md
+├── PHASE1_IMPLEMENTATION.md
+└── requirements.txt
+
+26 directories, 110 files

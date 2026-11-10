@@ -1,59 +1,50 @@
 from app.graph.state import GraphState
 from app.services.llm_helper import call_text_llm
 
+
 def socratic_node(state: GraphState) -> GraphState:
     if state.analysis is None or not hasattr(state.analysis, "analysis"):
         raise ValueError("state.analysis is None or missing 'analysis' attribute")
     current_analysis = state.analysis.analysis
-    current_assumptions = state.analysis.assumptions
-    current_uncertainties = state.analysis.uncertainties
-    
+    current_assumptions = state.analysis.assumptions or []
+    current_uncertainties = state.analysis.uncertainties or []
+    previous_question = state.socratic_question
+
+    prev_q_instruction = (
+        f"\nPREVIOUS QUESTION ASKED:\n{previous_question}\n"
+        "(Do NOT repeat or rephrase this question; ask something new.)\n"
+        if previous_question
+        else ""
+    )
+
+    prompt = f"""You are a thoughtful critical-thinking partner having a natural conversation with the user.
+Your job is to help the user examine their thinking, not demonstrate your own intelligence.
+
+CONTEXT:
+Analysis: {current_analysis}
+Assumptions: {current_assumptions}
+Uncertainties: {current_uncertainties}
+{prev_q_instruction}
+INSTRUCTIONS:
+1. Ask exactly ONE question.
+2. Must be ONE sentence in plain, conversational English.
+3. Aim for 10–25 words. Keep it clear, simple, and direct.
+4. Avoid academic jargon, formal metrics, mathematical methods, or technical buzzwords.
+5. Challenge an unexamined assumption, a missing connection, or an unexplored consequence.
+6. Do NOT interrogate or demand justification of every detail. Help the user reflect naturally.
+7. Return ONLY the question itself. No preamble, no explanation, no quotation marks, no markdown.
+8. The question MUST end with a question mark.
+""".strip()
+
     raw_text = call_text_llm(
         task_name="socratic_question",
-        prompt=f"""
-        TASK: Critical Thinking Assistant
-        You are a Socratic questioning specialist designed to deepen analytical thinking through targeted inquiry.
-        Core Responsibility:
-        Generate a single, powerful Socratic question that challenges the user to examine their reasoning more rigorously.
-        Input:
+        prompt=prompt,
+    )
+    question = raw_text.strip().strip('"').strip("'")
+    if question and not question.endswith("?"):
+        question += "?"
 
-        {current_analysis} - The user's current thinking, argument, or analysis
-        {current_assumptions} - A list of assumptions underlying the user's analysis
-        {current_uncertainties} - A list of uncertainties or knowledge gaps in the user's analysis
-
-        Question Design Principles:
-
-        Specificity Over Generality
-
-        Root the question directly in concrete details from the analysis
-        Avoid generic prompts like "Have you considered other perspectives?"
-        Reference specific claims, assumptions, or reasoning steps
-
-
-        Cognitive Challenge Targets
-
-        Assumptions: Unexamined beliefs treated as given
-        Evidence quality: Strength, relevance, and sufficiency of support
-        Logic gaps: Leaps in reasoning or unstated connections
-        Alternative explanations: Competing hypotheses not considered
-        Scope boundaries: What's been excluded or overlooked
-        Implications: Logical consequences not fully explored
-
-
-        Question Characteristics
-
-        Open-ended: Cannot be answered with simple yes/no
-        Provocative: Creates productive cognitive dissonance
-        Clear: Immediately understandable without clarification
-        Focused: Addresses one specific aspect deeply rather than many superficially
-        Encourage referencing a specific assumption or uncertainty
-
-
-
-        Output Format:
-        Return only the question itself—no preamble, explanation, or meta-commentary. 
-        It should be a single, concise sentence ending with a question mark.
-        """)
-    state.socratic_question = raw_text.strip()
+    state.socratic_question = question
+    state.turn_count += 1
+    state.clarification_count += 1
     return state
-    
